@@ -1,0 +1,136 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: stakater-buildah-image-push
+  labels:
+    app.kubernetes.io/version: "{{ .Chart.Version }}"
+spec:
+  description: >-
+    Buildah Image Push task pushes image to a container registry.
+  params:
+    - name: IMAGE_NAME
+      type: string
+      description: Reference of the image buildah will produce. Consists of application name proceeded by tag.
+    - name: BUILDER_IMAGE
+      type: string
+      description: The location of the buildah builder image.
+      default: >-
+        registry.redhat.io/rhel8/buildah@sha256:180c4d9849b6ab0e5465d30d4f3a77765cf0d852ca1cb1efb59d6e8c9f90d467
+    - name: STORAGE_DRIVER
+      type: string
+      description: Set buildah storage driver
+      default: overlay
+    - name: DOCKERFILE
+      type: string
+      description: Path to the Dockerfile to build.
+      default: ./Dockerfile
+    - name: CONTEXT
+      type: string
+      description: Path to the directory to use as context.
+      default: .
+    - name: TLSVERIFY
+      type: string
+      description: >-
+        Verify the TLS on the registry endpoint (for push/pull to a non-TLS
+        registry)
+      default: 'true'
+    - name: FORMAT
+      type: string
+      description: 'The format of the built container, oci or docker'
+      default: oci
+    - name: BUILD_EXTRA_ARGS
+      type: string
+      description: Extra parameters passed for the build command when building images.
+      default: ''
+    - name: PUSH_EXTRA_ARGS
+      type: string
+      default: ''
+      description: Extra parameters passed for the push command when pushing images.
+    - name: BUILD_IMAGE
+      type: string
+      default: 'true'
+      description: Flag specifying whether image should be built again.
+    - name: IMAGE_REGISTRY
+      type: string
+      default: 'NA'
+      optional: true
+      description: Image registry url.
+    - name: CURRENT_GIT_TAG
+      type: string
+      default: ''
+      description: Current version of the application/image in dev.
+    - name: REPO_NAME
+      type: string
+      description: Name of the repository
+      default: 'NA'
+  results:
+    - description: Digest of the image just built.
+      name: IMAGE_DIGEST
+  steps:
+    - image: $(params.BUILDER_IMAGE)
+      name: push
+      resources: {}
+      env:
+        - name: IMAGE_REGISTRY
+          valueFrom:
+            secretKeyRef:
+              name: docker-reg-creds
+              key: url
+              optional: true
+      script: >
+        if [ $(params.IMAGE_REGISTRY) != "NA" ]; then
+          OVERRIDE=true
+          buildah pull docker://$(params.IMAGE_REGISTRY)/$(params.REPO_NAME):$(params.CURRENT_GIT_TAG) || Image_unavailable=$?
+        else
+          buildah pull docker://${IMAGE_REGISTRY}/$(params.REPO_NAME):$(params.CURRENT_GIT_TAG) || Image_unavailable=$?
+        fi  
+  
+        if [[ $(params.BUILD_IMAGE) == true || $Image_unavailable != ''
+        ]]; then
+          if [ "$OVERRIDE" = true ]; then
+          buildah tag $(params.IMAGE_NAME) $(params.IMAGE_REGISTRY)/$(params.IMAGE_NAME)
+          buildah --storage-driver=$(params.STORAGE_DRIVER) push \
+            $(params.PUSH_EXTRA_ARGS) --tls-verify=$(params.TLSVERIFY) \
+            --digestfile $(workspaces.source.path)/image-digest $(params.IMAGE_REGISTRY)/$(params.IMAGE_NAME) \
+            docker://$(params.IMAGE_REGISTRY)/$(params.IMAGE_NAME)
+          else
+          buildah tag $(params.IMAGE_NAME) ${IMAGE_REGISTRY}/$(params.IMAGE_NAME)
+          buildah --storage-driver=$(params.STORAGE_DRIVER) push \
+            $(params.PUSH_EXTRA_ARGS) --tls-verify=$(params.TLSVERIFY) \
+            --digestfile $(workspaces.source.path)/image-digest ${IMAGE_REGISTRY}/$(params.IMAGE_NAME) \
+            docker://${IMAGE_REGISTRY}/$(params.IMAGE_NAME)
+          fi
+        else
+          if [ "$OVERRIDE" = true ]; then
+            buildah pull docker://$(params.IMAGE_REGISTRY)/$(params.REPO_NAME):$(params.CURRENT_GIT_TAG)
+            buildah tag $(params.IMAGE_REGISTRY)/$(params.REPO_NAME):$(params.CURRENT_GIT_TAG) $(params.IMAGE_REGISTRY)/$(params.IMAGE_NAME)
+            buildah --storage-driver=$(params.STORAGE_DRIVER) push \
+              $(params.PUSH_EXTRA_ARGS) --tls-verify=$(params.TLSVERIFY) \
+              $(params.IMAGE_REGISTRY)/$(params.IMAGE_NAME) docker://$(params.IMAGE_REGISTRY)/$(params.IMAGE_NAME)
+          else
+            buildah pull docker://${IMAGE_REGISTRY}/$(params.REPO_NAME):$(params.CURRENT_GIT_TAG)
+            buildah tag ${IMAGE_REGISTRY}/$(params.REPO_NAME):$(params.CURRENT_GIT_TAG) ${IMAGE_REGISTRY}/$(params.IMAGE_NAME)
+            buildah --storage-driver=$(params.STORAGE_DRIVER) push \
+              $(params.PUSH_EXTRA_ARGS) --tls-verify=$(params.TLSVERIFY) \
+              ${IMAGE_REGISTRY}/$(params.IMAGE_NAME) docker://${IMAGE_REGISTRY}/$(params.IMAGE_NAME)
+          fi
+        fi
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      workingDir: $(workspaces.source.path)
+    - image: $(params.BUILDER_IMAGE)
+      name: digest-to-results
+      resources: {}
+      script: >-
+        cat $(workspaces.source.path)/image-digest | tee
+        /tekton/results/IMAGE_DIGEST
+  volumes:
+    - emptyDir: {}
+      name: varlibcontainers
+  workspaces:
+    - name: source
+    - name: buildah-git-dependency-token
+      optional: true

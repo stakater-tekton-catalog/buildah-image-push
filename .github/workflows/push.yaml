@@ -1,0 +1,20 @@
+name: Push
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'helm/**'
+
+jobs:
+  build-helm-and-push-helm:
+    uses: stakater-tekton-catalog/.github/.github/workflows/push_tekton.yaml@v0.0.2
+    name: Build helm and push to registry, create tag
+    with:
+      HELM_PACKAGE_NAME: stakater-buildah-image-push
+    secrets:
+      CONTAINER_REGISTRY_URL: ghcr.io/stakater
+      CONTAINER_REGISTRY_USERNAME: ${{ github.actor }}
+      CONTAINER_REGISTRY_PASSWORD: ${{ secrets.STAKATER_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.STAKATER_GITHUB_TOKEN }}

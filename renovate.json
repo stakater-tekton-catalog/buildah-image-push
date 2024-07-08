@@ -1,0 +1,37 @@
+{
+  "extends": [
+    "config:base",
+    ":dependencyDashboard",
+    ":rebaseStalePrs",
+    ":renovatePrefix",
+    ":separateMajorReleases",
+    ":separateMultipleMajorReleases",
+    ":separatePatchReleases"
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "matchPackagePatterns": [
+        "*"
+      ],
+      "automerge": false,
+      "labels": [
+        "all-dependencies-updates"
+      ]
+    }
+  ],
+  "rollbackPrs": true,
+  "kubernetes": {
+    "fileMatch": [
+      "\\.yaml$"
+    ]
+  },
+  "ignorePaths": [
+    "task/**"
+  ]
+}
