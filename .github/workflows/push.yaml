@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-helm-and-push-helm:
-    uses: stakater-tekton-catalog/.github/.github/workflows/push_tekton.yaml@v0.0.2
+    uses: stakater-tekton-catalog/.github/.github/workflows/push_tekton.yaml@v0.0.4
     name: Build helm and push to registry, create tag
     with:
       HELM_PACKAGE_NAME: stakater-buildah-image-push
