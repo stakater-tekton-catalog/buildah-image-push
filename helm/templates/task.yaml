@@ -63,6 +63,7 @@ spec:
               optional: true
       script: >
         cp -r /workspace/source/containers/* /var/lib/containers/
+        
         if [ $(params.IMAGE_REGISTRY) != "NA" ]; then
           OVERRIDE=true
           buildah pull docker://$(params.IMAGE_REGISTRY)/$(params.REPO_NAME):$(params.CURRENT_GIT_TAG) || Image_unavailable=$?
