@@ -1,0 +1,19 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'helm/**'
+
+jobs:
+  build-helm-and-push-helm-snapshot:
+    uses: stakater-tekton-catalog/.github/.github/workflows/pull_request_tekton.yaml@v0.0.4
+    name: Build helm and push snapshot to registry
+    with:
+      HELM_PACKAGE_NAME: stakater-buildah-image-push
+    secrets:
+      CONTAINER_REGISTRY_URL: ghcr.io/stakater
+      CONTAINER_REGISTRY_USERNAME: ${{ github.actor }}
+      CONTAINER_REGISTRY_PASSWORD: ${{ secrets.STAKATER_GITHUB_TOKEN }}
