@@ -15,6 +15,6 @@ jobs:
       HELM_PACKAGE_NAME: stakater-buildah-image-push
     secrets:
       CONTAINER_REGISTRY_URL: ghcr.io/stakater
-      CONTAINER_REGISTRY_USERNAME: ${{ github.actor }}
-      CONTAINER_REGISTRY_PASSWORD: ${{ secrets.STAKATER_GITHUB_TOKEN }}
-      GH_TOKEN: ${{ secrets.STAKATER_GITHUB_TOKEN }}
+      CONTAINER_REGISTRY_USERNAME: ${{ secrets.GHCR_USERNAME }}
+      CONTAINER_REGISTRY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
+      GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
